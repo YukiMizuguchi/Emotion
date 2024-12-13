@@ -15,14 +15,14 @@
 #define F "result.txt"
 
 using namespace std;
-const int typeN = 216; //3*3*3*2*2*2
 
-const double mutationRate = 0.025;
-const double b = 1.0; //協力による利益
-const double c = 0.3; //協力コスト
-const double c_e = 0.1; //感情表現コスト
-const int generationN = 350; //300世代程度で収束
-const int d = 2;
+const int typeN = 216; // タイプ数（3*3*3*2*2*2）
+const double mutationRate = 0.025; // 突然変異の発生確率
+const double b = 1.0; // 協力による利益
+const double c = 0.3; // 協力コスト
+const double c_e = 0.1; // 感情表現コスト
+const int generationN = 350; // 世代数（300世代程度で収束）
+const int d = 2; // 進化速度定数
 
 void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vector<std::vector<std::vector<double>>>& mix_vec, int id1, int id2);
 void calculateFitness(double* mu, std::vector<std::vector<std::vector<int>>>& eq_vec, std::vector<std::vector<std::vector<double>>>& mix_vec, vector<vector<double>>& x, double* ave_payoff_list);
@@ -30,25 +30,27 @@ void calculateFrequency(double* new_mu, double* mu, double* ave_payoff_list);
 void mutation(double* mu_new, double rnd);
 void outputResult(int generation, double* mu, double* ave_payoff_list, vector<vector<double>>& x);
 
-
 ofstream outputfile(F);
 
 int main()
 {
 	srand((unsigned)time(NULL)); // 乱数シード初期化
-	//0から1の乱数を生成
-	std::mt19937_64 mt64(rand());  //もとにする整数型に乱数を用いる
-	std::uniform_real_distribution<double> uni(0, 1);
+	std::mt19937_64 mt64(rand());  // もとにする整数型に乱数を用いる
+	std::uniform_real_distribution<double> uni(0, 1); // 0から1の一様乱数の生成
 
-	double mu[typeN];
-	double mu_new[typeN];
-	double ave_payoff_list[typeN] = {0.0};
+	std::vector<std::vector<std::vector<int>>> eq_vec; // ナッシュ均衡を格納する配列
+	std::vector<std::vector<std::vector<double>>> mix_vec; //混合戦略ナッシュ均衡を格納する
 
+	double mu[typeN]; // 各タイプの割合のリスト
+	double mu_new[typeN]; // 各タイプの割合のリスト（コピー用）
+	double ave_payoff_list[typeN] = {0.0}; // 各タイプが得た適応度のリスト
+
+	// 割合の初期化（均等に配分）
     for(int i = 0; i < typeN; ++i) {
         mu[i] = 1.0/typeN;
     }
-    std::vector<std::vector<std::vector<int>>> eq_vec;
-    std::vector<std::vector<std::vector<double>>> mix_vec;
+
+    // ナッシュ均衡を事前に計算し格納
     for (int j = 0; j < typeN; ++j) { // 3レイヤーを追加する例
     	eq_vec.push_back({}); // 新しいレイヤーを追加
 
@@ -67,26 +69,29 @@ int main()
     	}
     }
 
+    // タイプの組ごとに効率的ナッシュ均衡を計算
     for (int id1 = 0; id1 < typeN; ++id1) {
     	for (int l = 0; l < typeN; ++l){
         	calculateNash(eq_vec, mix_vec, id1, l);
         }
     }
 
+    // シミュレーション開始
     for (int i = 0; i < generationN; i++) {
     	cout << "generation: "<< i << endl;
     	vector<vector<double>> x(typeN, vector<double>(typeN, 0.0));
-        calculateFitness(mu, eq_vec, mix_vec, x, ave_payoff_list); //選ばれた行動から利得を計算
+        calculateFitness(mu, eq_vec, mix_vec, x, ave_payoff_list); //　選ばれた行動から平均適応度を計算
 
-        outputResult(i, mu, ave_payoff_list, x);
+        outputResult(i, mu, ave_payoff_list, x); //　各タイプの割合や獲得した適応度、協力率をテキストファイルに出力
 
-        calculateFrequency(mu_new, mu, ave_payoff_list); //次世代の割合を計算
+        calculateFrequency(mu_new, mu, ave_payoff_list); // 獲得した適応度を用いて次世代の割合を計算
 
+        // 微小な確率で突然変異発生
         if (uni(mt64) < mutationRate){
+        	cout << "mutation" << endl;
             mutation(mu_new, uni(mt64));
-            cout << "mutation" << endl;
         }
-        copy(mu_new, mu_new + typeN, mu);
+        copy(mu_new, mu_new + typeN, mu); // 配列をコピー
     }
 
     outputfile.close();
@@ -94,7 +99,9 @@ int main()
     cout << "Simulation complete." << endl;
 }
 
+// 効率的ナッシュ均衡の計算
 void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vector<std::vector<std::vector<double>>>& mix_vec, int id1, int id2){
+	// タイプナンバーをrとeに変換
     int r1_1 = (id1-(id1%108))/108;
     int r2_1 = ((id1%108)-(id1%108)%54)/54;
     int r3_1 = ((id1%54)-(id1%54)%27)/27;
@@ -108,6 +115,7 @@ void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vect
     int e2_2 = ((id2%9)-(id2%9)%3)/3-1;
     int e3_2 = id2%3-1;
 
+    // 各戦略プロファイルの効用を計算
     double CC_P1 = b - c + r1_1*e1_2 - c_e*abs(e1_1);
     double CD_P1 = -c + r3_1*e2_2 - c_e*abs(e3_1);
     double DC_P1 = b + r2_1*e3_2 - c_e*abs(e2_1);
@@ -122,11 +130,13 @@ void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vect
     double x1_mix = -1.0;
     double x2_mix = -1.0;
 
-
+    // 混合戦略ナッシュ均衡を計算
     if (abs(CC_P1-CD_P1-DC_P1+DD_P1) > 0.001 && abs(CC_P2-CD_P2-DC_P2+DD_P2) > 0.001){
     	x1_mix = (-DC_P2+DD_P2)/(CC_P2-CD_P2-DC_P2+DD_P2);
         x2_mix = (-CD_P1+DD_P1)/(CC_P1-CD_P1-DC_P1+DD_P1);
     }
+
+    // 協力率が両プレイヤーとも(0,1)の範囲内かチェック（範囲外なら混合戦略ナッシュ均衡は存在しない）
     if (x1_mix > 0.0 && x1_mix < 1.0 && x2_mix > 0.0 && x2_mix < 1.0){
         Mix_P1 = x1_mix*x2_mix*CC_P1 + x1_mix*(1-x2_mix)*CD_P1 + (1-x1_mix)*x2_mix*DC_P1 + (1-x1_mix)*(1-x2_mix)*DD_P1 + 10;
         Mix_P2 = x1_mix*x2_mix*CC_P2 + x1_mix*(1-x2_mix)*CD_P2 + (1-x1_mix)*x2_mix*DC_P2 + (1-x1_mix)*(1-x2_mix)*DD_P2 + 10;
@@ -135,6 +145,7 @@ void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vect
         Mix_P2 = -1.0;
     }
 
+    // 純粋戦略ナッシュ均衡を計算
     double nash_list[2][5] = {{CC_P1, CD_P1, DC_P1, DD_P1, Mix_P1}, {CC_P2, CD_P2, DC_P2, DD_P2, Mix_P2}};
     if ((CC_P1 >= DC_P1) && (CC_P2 >= CD_P2)){
         nash_list[0][0] += 10;
@@ -153,6 +164,7 @@ void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vect
         nash_list[1][3] += 10;
     }
 
+    // 均衡の中で効率的なものを選択
     for (int j = 0; j < 5; j++) {
     	bool efficient = true;
         for (int k = 0; k < 5; k++) {
@@ -170,9 +182,10 @@ void calculateNash(std::vector<std::vector<std::vector<int>>>& eq_vec, std::vect
     }
 }
 
+// 平均適応度の計算
 void calculateFitness(double* mu_t, std::vector<std::vector<std::vector<int>>>& eq_vec, std::vector<std::vector<std::vector<double>>>& mix_vec, vector<vector<double>>& x, double* ave_payoff_list_t){
     for (int k = 0; k < typeN; k++){
-        if (mu_t[k] > 0.0000001){ //集団中に存在するタイプのみ計算
+        if (mu_t[k] > 0.0000001){ // 集団中に存在するタイプのみ計算
             int e1_1 = abs(((k%27)-(k%27)%9)/9-1);
             int e2_1 = abs(((k%9)-(k%9)%3)/3-1);
             int e3_1 = abs(k%3-1);
@@ -181,6 +194,7 @@ void calculateFitness(double* mu_t, std::vector<std::vector<std::vector<int>>>& 
             	int size = eq_vec[k][l].size();
             	for (int a = 0; a < size; a++){
             		vector<vector<double>> x_t(typeN, vector<double>(typeN, 0));
+            		// ナッシュ均衡を抽出
             		int eq = eq_vec[k][l][a];
 					if (eq == 0){
 						x_t[k][l] = 1.0;
@@ -201,9 +215,10 @@ void calculateFitness(double* mu_t, std::vector<std::vector<std::vector<int>>>& 
 						cout << "Error2!!" << endl;
 					}
 
-
+					// 均衡が複数ある場合には利得の平均をとる
 					ave_payoff_list_t[k] += mu_t[l]*(x_t[k][l]*x_t[l][k]*(b+c_e*(1-e1_1))+x_t[k][l]*(1-x_t[l][k])*(c_e*(1-e3_1))+(1-x_t[k][l])*x_t[l][k]*(b+c+c_e*(1-e2_1))+(1-x_t[k][l])*(1-x_t[l][k])*(c+c_e))/size;
 
+					// 均衡が複数ある場合には協力率の平均をとる（出力用）
 					if (eq == 0){
 						x[k][l] += 1.0/size;
 					}else if (eq == 1){
@@ -223,27 +238,32 @@ void calculateFitness(double* mu_t, std::vector<std::vector<std::vector<int>>>& 
     }
 }
 
+// 次世代の割合を計算
 void calculateFrequency(double* new_mu_t, double* mu_t, double* ave_payoff_list_t){
     double ave_ave_fit = 0.0;
     for (int j = 0; j < typeN; j++) {
         ave_ave_fit += mu_t[j]*ave_payoff_list_t[j];
     }
 
+    // 多くの利得を獲得したタイプほど次世代で割合を増やす
     for (int j = 0; j < typeN; j++) {
         new_mu_t[j] = mu_t[j]*(d + ave_payoff_list_t[j])/(d + ave_ave_fit);
-        ave_payoff_list_t[j] = 0; //利得のリセット
+        ave_payoff_list_t[j] = 0; // 適応度のリセット
     }
 }
 
-void mutation(double* mu_new_t, double rnd){// 0.025
+// 突然変異
+void mutation(double* mu_new_t, double rnd){
+	// ランダムに一つのタイプが選ばれる
     int id = rand()%216;
+    // 選ばれたタイプの割合に(0,0.1)の範囲の乱数を足し、全体が1になるように調整する
     mu_new_t[id] = mu_new_t[id] + (rnd/10.0);
     for (int j = 0; j < typeN; j++) {
         mu_new_t[j] = mu_new_t[j]/(1+(rnd/10.0));
     }
 }
 
-
+// 結果の出力
 void outputResult(int generation, double* mu_t, double* ave_payoff_list_t, vector<vector<double>>& x_t){
 	double r1;
 	double r2;

@@ -46,36 +46,42 @@ int main()
 	std::mt19937_64 mt64(rand());  //もとにする整数型に乱数を用いる
 	std::uniform_real_distribution<double> uni(0, 1); //0から1の乱数を生成。
 
-	vector<vector<double>> x(typeN, vector<double>(8, 0.5));
-	vector<vector<double>> x_new(typeN, vector<double>(8));
-	vector<double> mu_r(8);
-	double mu[typeN];
-	double mu_new[typeN];
-	double ave_payoff_list[typeN] = {0.0};
+	vector<vector<double>> x(typeN, vector<double>(8, 0.5)); // 戦略（協力率）のベクトル（初期値は0.5）
+	vector<vector<double>> x_new(typeN, vector<double>(8)); // 戦略（協力率）のベクトル（コピー用）
+	vector<double> mu_r(8); // 各rの割合の配列
+	double mu[typeN]; // 各タイプの割合の配列
+	double mu_new[typeN]; // 各タイプの割合の配列（コピー用）
+	double ave_payoff_list[typeN] = {0.0}; // 各タイプが得た適応度の配列
 
+    // 割合の初期化（均等に配分）
     for(int i = 0; i < typeN; ++i) {
         mu[i] = 1.0/typeN;
     }
 
+    // シミュレーション開始
     for (int i = 0; i < generationN; i++) {
     	cout << "generation: "<< i << endl;
-    	mu_r = calculateMuR(mu);
+    	mu_r = calculateMuR(mu); // 各rのタイプ割合の取得
+
+        // 戦略（各rに対する協力率）の学習
         for (int j = 0; j < learningP; j++) {
-            Learning(x, x_new, mu, mu_r); //学習
-            x = copyArray(x_new);
+            Learning(x, x_new, mu, mu_r); // 学習
+            x = copyArray(x_new); // ベクトルのコピー
         }
-        calculateFitness(mu, x, ave_payoff_list); //選ばれた行動から利得を計算
+        calculateFitness(mu, x, ave_payoff_list); // 学習した協力率を用いて平均適応度を計算
 
-        outputResult(i, mu, mu_r, ave_payoff_list, x);
+        outputResult(i, mu, mu_r, ave_payoff_list, x); // 各タイプの割合や獲得した利得、協力率をテキストファイルに出力
 
-        calculateFrequency(mu_new, mu, ave_payoff_list); //次世代の割合を計算
+        calculateFrequency(mu_new, mu, ave_payoff_list); // 獲得した適応度を用いて次世代の割合を計算
 
+        // 微小な確率で突然変異発生
         if (uni(mt64) < mutationRate){
             mutation(x, mu_new, uni(mt64));
             cout << "mutation" << endl;
         }
-        copy(mu_new, mu_new + typeN, mu);
+        copy(mu_new, mu_new + typeN, mu);  // 配列をコピー
 
+        // 一定の確率でランダムショック発生
         if (uni(mt64) < shockRate){
         	cout << "random shock" << endl;
         	randomShock(x, mu);
@@ -87,11 +93,13 @@ int main()
     cout << "Simulation complete." << endl;
 }
 
+// 配列のコピー
 vector<vector<double>> copyArray(const vector<std::vector<double>>& x_new_t) {
     vector<vector<double>> x_t = x_new_t;
     return x_t;
 }
 
+// 戦略の学習
 void Learning(vector<vector<double>>& x_t, vector<vector<double>>& x_new_t, double* mu_t, vector<double>& mu_r_t){
     for (int k = 0; k < typeN; k++){
         if (mu_t[k] > 0.00001){ //集団中に存在するタイプのみ学習
@@ -102,6 +110,7 @@ void Learning(vector<vector<double>>& x_t, vector<vector<double>>& x_new_t, doub
     }
 }
 
+// 各rの割合を計算
 vector<double> calculateMuR(double* mu_t){
 	vector<double> mu_r_t(8, 0.0);
 	for (int k = 0; k < typeN; k++){
@@ -113,7 +122,9 @@ vector<double> calculateMuR(double* mu_t){
 	return mu_r_t;
 }
 
+// 期待効用の計算
 double calculateUtility(double x1, int id1, int r_id2, vector<vector<double>>& x_t, double* mu_t, vector<double>& mu_r_t){
+    // タイプナンバーをrとeに変換
     int r1_1 = (id1-(id1%108))/108;
     int r2_1 = ((id1%108)-(id1%108)%54)/54;
     int r3_1 = ((id1%54)-(id1%54)%27)/27;
@@ -126,6 +137,7 @@ double calculateUtility(double x1, int id1, int r_id2, vector<vector<double>>& x
     int r2_2 = ((r_id2%4)-(r_id2%4)%2)/2;
     int r3_2 = r_id2%2;
 
+    //　期待効用の計算
     double u = 0.0;
     for (int k = 0; k < 27; k++){
         int e1_2 = ((k%27)-(k%27)%9)/9-1;
@@ -139,6 +151,7 @@ double calculateUtility(double x1, int id1, int r_id2, vector<vector<double>>& x
     return u;
 }
 
+// 平均適応度の計算
 void calculateFitness(double* mu_t, vector<vector<double>>& x_t, double* ave_payoff_list_t){
     for (int k = 0; k < typeN; k++){
         if (mu_t[k] > 0.0000001){ //集団中に存在するタイプのみ計算
@@ -161,6 +174,7 @@ void calculateFitness(double* mu_t, vector<vector<double>>& x_t, double* ave_pay
     }
 }
 
+// 次世代の割合を計算
 void calculateFrequency(double* new_mu_t, double* mu_t, double* ave_payoff_list_t){
     double ave_ave_fit = 0;
     for (int j = 0; j < typeN; j++) {
@@ -169,17 +183,21 @@ void calculateFrequency(double* new_mu_t, double* mu_t, double* ave_payoff_list_
 
     for (int j = 0; j < typeN; j++) {
         new_mu_t[j] = mu_t[j]*(d + ave_payoff_list_t[j])/(d + ave_ave_fit);
-        ave_payoff_list_t[j] = 0; //利得のリセット
+        ave_payoff_list_t[j] = 0; // 適応度のリセット
     }
 }
 
+// 突然変異
 void mutation(vector<vector<double>>& x_t, double* mu_new_t, double rnd){
+    // ランダムに一つのタイプが選ばれる
     int id = rand()%216;
+    // もし選ばれたタイプが突然変異前に根絶していた場合、学習した協力率はリセット
 	if(mu_new_t[id] <= 0.0000001){
 		for (int l = 0; l < 8; l++){
 			x_t[id][l] = 0.5;
 		}
 	}
+    // 選ばれたタイプの割合に(0,0.1)の範囲の乱数を足し、全体が1になるように調整する
     mu_new_t[id] = mu_new_t[id] + (rnd/10.0);
     for (int j = 0; j < typeN; j++) {
         mu_new_t[j] = mu_new_t[j]/(1+rnd/10.0);
@@ -188,10 +206,12 @@ void mutation(vector<vector<double>>& x_t, double* mu_new_t, double rnd){
 
 void randomShock(vector<vector<double>>& x, double* mu){
 	std::mt19937_64 mt64_t(rand());
+    // 集団中に存在するタイプの中からランダムに一つが選ばれる
 	int id = rand()%216;
 	while (mu[id] < 0.000001){
 		id = rand()%216;
 	}
+    // 選ばれたタイプのすべてのrに対する戦略が、切断正規分布（ショック前の戦略を平均とする）に従ってランダムに変更
 	for (int k = 0; k < 8; k++) {
 		std::normal_distribution<double> normal(x[id][k], 0.2);
 		double number = 2.0;
@@ -202,6 +222,7 @@ void randomShock(vector<vector<double>>& x, double* mu){
 	}
 }
 
+// 結果の出力
 void outputResult(int generation, double* mu_t, vector<double>& mu_r_t, double* ave_payoff_list_t, vector<vector<double>>& x_t){
 	double r1;
 	double r2;
