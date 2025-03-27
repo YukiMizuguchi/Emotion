@@ -42,8 +42,7 @@ ofstream outputfile(F);
 
 int main()
 {
-	srand((unsigned)time(NULL)); // 乱数シード初期化
-	std::mt19937_64 mt64(rand());  //もとにする整数型に乱数を用いる
+	std::mt19937 mt64(1234);  //シードを1234に固定
 	std::uniform_real_distribution<double> uni(0, 1); // 0から1の一様乱数の生成
 
 	vector<vector<double>> x(typeN, vector<double>(27, 0.5)); // 戦略（協力率）のベクトル（初期値は0.5）
