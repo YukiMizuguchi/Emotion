@@ -22,7 +22,7 @@ const double shockRate = 0.1;
 const double b = 1.0; //協力による利益
 const double c = 0.3; //協力コスト
 const double c_e = 0.1; //感情表現コスト
-const int generationN = 300; // 世代数
+const int generationN = 200000; // 世代数
 const int learningP = 200; //学習ステップ数
 const int d = 2; //進化速度定数
 const double delta = 0.25; //学習速度定数
@@ -42,9 +42,8 @@ ofstream outputfile(F);
 
 int main()
 {
-	srand((unsigned)time(NULL)); // 乱数シード初期化
-	std::mt19937_64 mt64(rand());  //もとにする整数型に乱数を用いる
-	std::uniform_real_distribution<double> uni(0, 1); //0から1の乱数を生成。
+	std::mt19937 mt64(1234);  // シードを1234に設定
+	std::uniform_real_distribution<double> uni(0, 1); // 0から1の乱数を生成。
 
 	vector<vector<double>> x(typeN, vector<double>(8, 0.5)); // 戦略（協力率）のベクトル（初期値は0.5）
 	vector<vector<double>> x_new(typeN, vector<double>(8)); // 戦略（協力率）のベクトル（コピー用）
