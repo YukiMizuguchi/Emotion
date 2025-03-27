@@ -34,8 +34,7 @@ ofstream outputfile(F);
 
 int main()
 {
-	srand((unsigned)time(NULL)); // 乱数シード初期化
-	std::mt19937_64 mt64(rand());  // もとにする整数型に乱数を用いる
+	std::mt19937 mt64(1234);  // シードを1234に固定
 	std::uniform_real_distribution<double> uni(0, 1); // 0から1の一様乱数の生成
 
 	std::vector<std::vector<std::vector<int>>> eq_vec; // ナッシュ均衡を格納する配列
